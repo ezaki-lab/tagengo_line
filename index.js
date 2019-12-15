@@ -20,7 +20,7 @@ express()
 
 function lineBot(req, res) {
   res.status(200).end();
-  const events = req.body.events;
+  const events = req.events;
   const promises = [];
   for (let i = 0, l = events.length; i < l; i++) {
     const ev = events[i];
@@ -35,7 +35,7 @@ async function echoman(ev) {
   const pro =  await client.getProfile(ev.source.userId);
   return client.replyMessage(ev.replyToken, {
     type: "text",
-    text: `${pro.displayName}さん、今「${ev.message.text}」って言いました？`
+    text: "${ev.message.text}"
   })
 }
   

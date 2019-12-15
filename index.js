@@ -2,12 +2,13 @@ const express = require('express')
 const path = require('path')
 const PORT = process.env.PORT || 5000
 const line = require("@line/bot-sdk");
-const client = new line.Client(config);
 
 const config = {
   channelAccessToken: process.env.ACCESS_TOKEN,
   channelSecret: process.env.SECRET_KEY
 };
+
+const client = new line.Client(config);
 
 express()
   .use(express.static(path.join(__dirname, 'public')))

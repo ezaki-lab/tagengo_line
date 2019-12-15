@@ -1,90 +1,49 @@
 'use strict';
 
-const http = require('http');
-const https = require('https');
-const crypto = require('crypto');
+const line = require('@line/bot-sdk');
+const express = require('express');
 
-const HOST = 'api.line.me'; 
-const REPLY_PATH = '/v2/bot/message/reply';//リプライ用
-const CH_SECRET = process.env.ACCESS_TOKEN; //Channel Secretを指定
-const CH_ACCESS_TOKEN = process.env.SECRET_KEY; //Channel Access Tokenを指定
-const SIGNATURE = crypto.createHmac('sha256', CH_SECRET);
-const PORT = 3000;
-
-/**
- * httpリクエスト部分
- */
-const client = (replyToken, SendMessageObject) => {    
-    let postDataStr = JSON.stringify({ replyToken: replyToken, messages: SendMessageObject });
-    let options = {
-        host: HOST,
-        port: 443,
-        path: REPLY_PATH,
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            'X-Line-Signature': SIGNATURE,
-            'Authorization': `Bearer ${CH_ACCESS_TOKEN}`,
-            'Content-Length': Buffer.byteLength(postDataStr)
-        }
-    };
-
-    return new Promise((resolve, reject) => {
-        let req = https.request(options, (res) => {
-                    let body = '';
-                    res.setEncoding('utf8');
-                    res.on('data', (chunk) => {
-                        body += chunk;
-                    });
-                    res.on('end', () => {
-                        resolve(body);
-                    });
-        });
-
-        req.on('error', (e) => {
-            reject(e);
-        });
-        req.write(postDataStr);
-        req.end();
-    });
+// create LINE SDK config from env variables
+const config = {
+  channelAccessToken: process.env.ACCESS_TOKEN,
+  channelSecret: process.env.SECRET_KEY,
 };
 
-http.createServer((req, res) => {    
-    if(req.url !== '/' || req.method !== 'POST'){
-        res.writeHead(200, {'Content-Type': 'text/plain'});
-        res.end('');
-    }
+// create LINE SDK client
+const client = new line.Client(config);
 
-    let body = '';
-    req.on('data', (chunk) => {
-        body += chunk;
-    });        
-    req.on('end', () => {
-        if(body === ''){
-          console.log('bodyが空です。');
-          return;
-        }
+// create Express app
+// about Express itself: https://expressjs.com/
+const app = express();
 
-        let WebhookEventObject = JSON.parse(body).events[0];        
-        //メッセージが送られて来た場合
-        if(WebhookEventObject.type === 'message'){
-            let SendMessageObject;
-            if(WebhookEventObject.message.type === 'text'){
-                SendMessageObject = [{
-                    type: 'text',
-                    text: WebhookEventObject.message.text
-                }];
-            }
-            client(WebhookEventObject.replyToken, SendMessageObject)
-            .then((body)=>{
-                console.log(body);
-            },(e)=>{console.log(e)});
-        }
-
-        res.writeHead(200, {'Content-Type': 'text/plain'});
-        res.end('success');
+// register a webhook handler with middleware
+// about the middleware, please refer to doc
+app.post('/callback', line.middleware(config), (req, res) => {
+  Promise
+    .all(req.body.events.map(handleEvent))
+    .then((result) => res.json(result))
+    .catch((err) => {
+      console.error(err);
+      res.status(500).end();
     });
+});
 
-}).listen(PORT);
+// event handler
+function handleEvent(event) {
+  if (event.type !== 'message' || event.message.type !== 'text') {
+    // ignore non-text-message event
+    return Promise.resolve(null);
+  }
 
-console.log(`Server running at ${PORT}`);
+  // create a echoing text message
+  const echo = { type: 'text', text: event.message.text };
+
+  // use reply API
+  return client.replyMessage(event.replyToken, echo);
+}
+
+// listen on port
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`listening on ${port}`);
+});

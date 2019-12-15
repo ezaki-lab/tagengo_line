@@ -22,7 +22,7 @@ function lineBot(req, res) {
   res.status(200).end();
   const events = req.events;
   const promises = [];
-  console.log(events)
+  console.log(req);
   for (let i = 0, l = events.length; i < l; i++) {
     const ev = events[i];
     promises.push(

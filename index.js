@@ -14,7 +14,7 @@ express()
   .set('views', path.join(__dirname, 'views'))
   .set('view engine', 'ejs')
   .get('/', (req, res) => res.render('pages/index'))
-  .post("/hook/", line.middleware(config), (req, res) => lineBot(req, res))
+  .post("/hook/", (req, res) => lineBot(req, res))
   .listen(PORT, () => console.log(`Listening on ${ PORT }`))
 
 function lineBot(req, res) {
